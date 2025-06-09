@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SR&ED Refund Calculator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background-color: #F1F2F2;
+      font-family: 'Gothic A1', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 40px;
+    }
+    .calculator-card {
+      background-color: #ffffff;
+      border-radius: 16px;
+      padding: 35px;
+      max-width: 500px;
+      width: 100%;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      border-top: 5px solid #2B307E;
+    }
+    h2, h3 {
+      margin-bottom: 20px;
+      color: #2B307E;
+      font-weight: 700;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: 600;
+      color: #2B307E;
+    }
+    input, select {
+      width: 100%;
+      padding: 12px;
+      margin-top: 6px;
+      margin-bottom: 12px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      font-size: 16px;
+    }
+    button {
+      margin-top: 20px;
+      background-color: #2B307E;
+      color: white;
+      border: none;
+      padding: 14px;
+      font-size: 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      width: 100%;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #03CEA4;
+    }
+    .result {
+      background: #f0f4f8;
+      padding: 30px;
+      border-radius: 14px;
+      margin-top: 30px;
+      border-left: 5px solid #FF6A42;
+      display: none;
+    }
+    .result p {
+      margin: 10px 0;
+      color: #2B307E;
+      font-weight: 600;
+      font-size: 16px;
+    }
+    .result span {
+      font-size: 22px;
+      font-weight: 800;
+      color: #2B307E;
+      margin-left: 4px;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1;
+      padding-top: 150px;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.4);
+    }
+    .modal-content {
+      background-color: #fff;
+      margin: auto;
+      padding: 20px;
+      border-radius: 10px;
+      width: 80%;
+      max-width: 400px;
+      text-align: center;
+    }
+    .close {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<form name="email-capture" netlify hidden>
+  <input type="email" name="email" />
+</form>
+
+<div class="calculator-card">
+  <h2>SR&ED Refund Calculator</h2>
+  <label for="salary">Employee Salary ($):</label>
+  <input type="text" id="salary" />
+
+  <label for="contractors">Contractor Costs ($):</label>
+  <input type="text" id="contractors" />
+
+  <label for="materials">Cost of materials consumed or transformed ($):</label>
+  <input type="text" id="materials" />
+
+  <label for="support">Government Support Received ($):</label>
+  <input type="text" id="support" />
+
+  <label for="province">Province:</label>
+  <select id="province">
+    <option value="AB">Alberta</option>
+    <option value="BC">British Columbia</option>
+    <option value="MB">Manitoba</option>
+    <option value="NB">New Brunswick</option>
+    <option value="NL">Newfoundland and Labrador</option>
+    <option value="NS">Nova Scotia</option>
+    <option value="NT">Northwest Territories</option>
+    <option value="NU">Nunavut</option>
+    <option value="ON">Ontario</option>
+    <option value="PE">Prince Edward Island</option>
+    <option value="QC">Quebec</option>
+    <option value="SK">Saskatchewan</option>
+    <option value="YT">Yukon</option>
+  </select>
+
+  <button type="button" onclick="openModal()">Calculate</button>
+
+  <div id="result" class="result">
+    <h3><strong>Results</strong></h3>
+    <p><strong><span id="provinceLabelRefundable">Province Refundable Tax Credit</span>:</strong> <span id="provincialRefundable">0.00</span></p>
+    <p><strong><span id="provinceLabelNonRefundable">Province Non-Refundable Tax Credit</span>:</strong> <span id="provincialNonRefundable">0.00</span></p>
+    <p><strong>Federal Tax Credit (35%):</strong> <span id="federal">0.00</span></p>
+    <p><strong>Total Refundable Amount:</strong> <span id="total">0.00</span></p>
+  </div>
+</div>
+
+<div id="emailModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeModal()">&times;</span>
+    <h3>Enter your email to view results</h3>
+    <input type="email" id="userEmail" placeholder="you@example.com" />
+    <button onclick="validateEmail()">Submit</button>
+  </div>
+</div>
+
+<script>
+  const provinceRates = {
+    PE: { refundable: 0.00, nonRefundable: 0.00 },
+    AB: { refundable: 0.08, nonRefundable: 0.00 },
+    BC: { refundable: 0.10, nonRefundable: 0.00 },
+    MB: { refundable: 0.075, nonRefundable: 0.075 },
+    NB: { refundable: 0.15, nonRefundable: 0.00 },
+    NL: { refundable: 0.15, nonRefundable: 0.00 },
+    NS: { refundable: 0.15, nonRefundable: 0.00 },
+    ON: { refundable: 0.08, nonRefundable: 0.035 },
+    QC: { refundable: 0.10, nonRefundable: 0.00 },
+    SK: { refundable: 0.10, nonRefundable: 0.00 },
+    YT: { refundable: 0.15, nonRefundable: 0.00 },
+    NT: { refundable: 0.15, nonRefundable: 0.00 },
+    NU: { refundable: 0.15, nonRefundable: 0.00 }
+  };
+
+  function openModal() {
+    document.getElementById('emailModal').style.display = 'block';
+  }
+
+  function closeModal() {
+    document.getElementById('emailModal').style.display = 'none';
+  }
+
+  function validateEmail() {
+    const email = document.getElementById("userEmail").value;
+    const regex = /^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$/;
+
+    if (regex.test(email)) {
+      const form = new FormData();
+      form.append("form-name", "email-capture");
+      form.append("email", email);
+      fetch("/", { method: "POST", body: form });
+
+      closeModal();
+      calculate();
+      document.getElementById("result").style.display = "block";
+    } else {
+      alert("Please enter a valid email address.");
+    }
+  }
+
+  function calculate() {
+    const salary = parseCurrency(document.getElementById("salary").value);
+    const contractors = parseCurrency(document.getElementById("contractors").value);
+    const materials = parseCurrency(document.getElementById("materials").value);
+    const support = parseCurrency(document.getElementById("support").value);
+    const province = document.getElementById("province").value;
+    const provinceName = province === 'PE' ? 'PEI' : province;
+
+    const adjustedSalary = salary * 1.55;
+    const adjustedContractors = contractors * 0.80;
+    const eligible = adjustedSalary + adjustedContractors + materials - support;
+
+    const rates = provinceRates[province];
+    const provincialRefundable = eligible * rates.refundable;
+    const provincialNonRefundable = eligible * rates.nonRefundable;
+    const federal = (eligible - provincialRefundable - provincialNonRefundable) * 0.35;
+    const total = provincialRefundable + federal;
+
+    document.getElementById("provincialRefundable").innerText = formatCurrencyOutput(provincialRefundable);
+    document.getElementById("provinceLabelRefundable").innerText = provinceName + " Refundable Tax Credit (" + (rates.refundable * 100).toFixed(1) + "%)";
+    document.getElementById("federal").innerText = formatCurrencyOutput(federal);
+    document.getElementById("total").innerText = formatCurrencyOutput(total);
+    document.getElementById("provinceLabelNonRefundable").innerText = provinceName + " Non-Refundable Tax Credit (" + (rates.nonRefundable * 100).toFixed(1) + "%)";
+    document.getElementById("provincialNonRefundable").innerText = formatCurrencyOutput(provincialNonRefundable);
+  }
+
+  function formatCurrencyOutput(number) {
+    return '$' + number.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function parseCurrency(value) {
+    return parseFloat(value.replace(/[$,]/g, '')) || 0;
+  }
+</script>
+</body>
+</html>
